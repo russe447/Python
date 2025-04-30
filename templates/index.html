@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Visualizer</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-color: #2563eb;
+        --secondary-color: #1e40af;
+        --background-color: #f8fafc;
+        --text-color: #1e293b;
+        --error-color: #dc2626;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        background-color: var(--background-color);
+        color: var(--text-color);
+        line-height: 1.6;
+        padding: 2rem;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+          0 2px 4px -2px rgb(0 0 0 / 0.1);
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        color: var(--primary-color);
+        text-align: center;
+      }
+
+      h2 {
+        font-size: 1.5rem;
+        margin: 1.5rem 0;
+        color: var(--text-color);
+      }
+
+      .popular-tickers {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+      }
+
+      .ticker-btn {
+        background-color: #e2e8f0;
+        color: var(--text-color);
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .ticker-btn:hover {
+        background-color: #cbd5e1;
+      }
+
+      .ticker-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      form {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+      }
+
+      label {
+        font-weight: 500;
+      }
+
+      input[type="text"] {
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        width: 200px;
+        transition: border-color 0.2s;
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--primary-color);
+      }
+
+      button {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      button:hover {
+        background-color: var(--secondary-color);
+      }
+
+      .error {
+        color: var(--error-color);
+        background-color: #fee2e2;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+      }
+
+      .chart-container {
+        margin-top: 2rem;
+        text-align: center;
+      }
+
+      img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      }
+
+      .financial-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.5rem;
+        margin: 1.5rem 0;
+      }
+
+      .metric-card {
+        background-color: white;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .metric-label {
+        font-size: 0.75rem;
+        color: #64748b;
+      }
+
+      .metric-value {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-color);
+      }
+
+      .metric-value.positive {
+        color: #059669;
+      }
+
+      .metric-value.negative {
+        color: #dc2626;
+      }
+
+      .price-change {
+        font-size: 0.75rem;
+        margin-left: 0.25rem;
+      }
+
+      .news-block {
+        border: 1px solid #e2e8f0;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+        border-radius: 8px;
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+
+      .news-image {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 4px;
+      }
+
+      .news-content {
+        flex: 1;
+      }
+
+      .news-block h3 {
+        margin-bottom: 0.25rem;
+        font-size: 1rem;
+      }
+
+      .news-block p {
+        font-size: 0.875rem;
+      }
+
+      .company-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .company-logo {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+      }
+
+      .business-summary {
+        background-color: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin: 1.5rem 0;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #475569;
+      }
+
+      .business-summary.collapsed {
+        max-height: 6em;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .business-summary.collapsed::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2em;
+        background: linear-gradient(to bottom, transparent, #f8fafc);
+      }
+
+      .expand-button {
+        background: none;
+        border: none;
+        color: var(--primary-color);
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.5rem auto;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        background-color: rgba(37, 99, 235, 0.1);
+        width: fit-content;
+      }
+
+      .expand-button:hover {
+        background-color: rgba(37, 99, 235, 0.2);
+        transform: translateY(-1px);
+      }
+
+      .expand-button:active {
+        transform: translateY(0);
+      }
+
+      .expand-button svg {
+        width: 1em;
+        height: 1em;
+        transition: transform 0.3s ease;
+      }
+
+      .expand-button.expanded svg {
+        transform: rotate(180deg);
+      }
+
+      @media (max-width: 640px) {
+        body {
+          padding: 1rem;
+        }
+
+        .container {
+          padding: 1.5rem;
+        }
+
+        h1 {
+          font-size: 2rem;
+        }
+
+        .popular-tickers {
+          gap: 0.25rem;
+        }
+
+        .ticker-btn {
+          padding: 0.4rem 0.8rem;
+          font-size: 0.8rem;
+        }
+
+        form {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        input[type="text"] {
+          width: 100%;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>📈 Stock Visualizer</h1>
+
+      <div class="popular-tickers">
+        <button class="ticker-btn" data-ticker="AAPL">AAPL</button>
+        <button class="ticker-btn" data-ticker="MSFT">MSFT</button>
+        <button class="ticker-btn" data-ticker="GOOGL">GOOGL</button>
+        <button class="ticker-btn" data-ticker="AMZN">AMZN</button>
+        <button class="ticker-btn" data-ticker="META">META</button>
+        <button class="ticker-btn" data-ticker="TSLA">TSLA</button>
+        <button class="ticker-btn" data-ticker="NVDA">NVDA</button>
+        <button class="ticker-btn" data-ticker="JPM">JPM</button>
+        <button class="ticker-btn" data-ticker="V">V</button>
+        <button class="ticker-btn" data-ticker="WMT">WMT</button>
+      </div>
+
+      <form method="post">
+        <label for="ticker">Ticker symbol:</label>
+        <input
+          id="ticker"
+          name="ticker"
+          type="text"
+          placeholder="AAPL"
+          required
+        />
+        <button type="submit">Show Chart</button>
+      </form>
+
+      {% if ticker %} {% if financial_data %}
+      <div class="company-header">
+        {% if financial_data['Logo'] %}
+        <img
+          src="{{ financial_data['Logo'] }}"
+          alt="{{ financial_data['Company Name'] }} logo"
+          class="company-logo"
+          onerror="this.style.display='none'"
+        />
+        {% endif %}
+        <h2>{{ financial_data['Company Name'] }} ({{ ticker }})</h2>
+      </div>
+
+      {% if business_summary %}
+      <div class="business-summary collapsed" id="businessSummary">
+        {{ business_summary }}
+      </div>
+      <button class="expand-button" onclick="toggleSummary()">
+        Show more
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </button>
+      {% endif %} {% if chart %}
+      <div class="chart-container">
+        <img
+          src="data:image/png;base64,{{ chart }}"
+          alt="Stock chart for {{ ticker }}"
+        />
+      </div>
+      {% endif %}
+
+      <div class="financial-metrics">
+        {% for key, value in financial_data.items() %} {% if key != 'Company
+        Name' and key != 'Logo' %}
+        <div class="metric-card">
+          <div class="metric-label">{{ key }}</div>
+          <div
+            class="metric-value {% if key == 'Current Price' and value.is_positive %}positive{% elif key == 'Current Price' and not value.is_positive %}negative{% endif %}"
+          >
+            {{ value.value if key == 'Current Price' else value }} {% if key ==
+            'Current Price' %}
+            <span
+              class="price-change {% if value.is_positive %}positive{% else %}negative{% endif %}"
+            >
+              ({{ "+" if value.change >= 0 }}{{ "%.2f"|format(value.change) }}
+              {{ "%.2f"|format(value.change_percent) }}%)
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %} {% endfor %}
+      </div>
+
+      <h2>Recent News</h2>
+      {% if news_articles %} {% for article in news_articles %}
+      <div class="news-block">
+        {% if article.urlToImage and article.urlToImage != "" %}
+        <img
+          src="{{ article.urlToImage }}"
+          alt="Article image"
+          class="news-image"
+        />
+        {% endif %}
+        <div class="news-content">
+          <h3>
+            <a href="{{ article.url }}" target="_blank">{{ article.title }}</a>
+          </h3>
+          <p>{{ article.description }}</p>
+        </div>
+      </div>
+      {% endfor %} {% else %}
+      <p>No news available.</p>
+      {% endif %} {% else %}
+      <p class="error">Sorry, couldn't fetch data for "{{ ticker }}".</p>
+      {% endif %} {% endif %}
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const tickerInput = document.getElementById("ticker");
+        const tickerButtons = document.querySelectorAll(".ticker-btn");
+        const form = document.querySelector("form");
+
+        tickerButtons.forEach((button) => {
+          button.addEventListener("click", function () {
+            const ticker = this.dataset.ticker;
+            tickerInput.value = ticker;
+
+            // Update active state
+            tickerButtons.forEach((btn) => btn.classList.remove("active"));
+            this.classList.add("active");
+
+            // Submit the form automatically
+            form.submit();
+          });
+        });
+
+        // Set active state based on current ticker
+        const currentTicker = tickerInput.value;
+        if (currentTicker) {
+          const activeButton = document.querySelector(
+            `.ticker-btn[data-ticker="${currentTicker}"]`
+          );
+          if (activeButton) {
+            activeButton.classList.add("active");
+          }
+        }
+      });
+
+      function toggleSummary() {
+        const summary = document.getElementById("businessSummary");
+        const button = document.querySelector(".expand-button");
+
+        if (summary.classList.contains("collapsed")) {
+          summary.classList.remove("collapsed");
+          button.textContent = "Show less";
+          button.classList.add("expanded");
+        } else {
+          summary.classList.add("collapsed");
+          button.textContent = "Show more";
+          button.classList.remove("expanded");
+        }
+      }
+    </script>
+  </body>
+</html>
