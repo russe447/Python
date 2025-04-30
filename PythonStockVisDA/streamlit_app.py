@@ -1,12 +1,12 @@
 import streamlit as st
-import yfinance as yf
 import matplotlib.pyplot as plt
 import mplfinance as mpf
-from newsapi import NewsApiClient
-import os
 from io import BytesIO
 from typing import Dict, Any, Optional, Union
 import finnhub
+import os
+import pandas as pd
+from datetime import datetime, timedelta
 
 # Set page config
 st.set_page_config(
@@ -169,7 +169,7 @@ def create_stock_chart(data: Any, ticker: str) -> BytesIO:
 
 
 def get_stock_info(ticker: str) -> tuple[Optional[Any], Optional[Dict], Optional[str]]:
-    """Fetch stock data and information.
+    """Fetch stock data and information using Finnhub.
     
     Args:
         ticker: Stock ticker symbol
@@ -177,18 +177,54 @@ def get_stock_info(ticker: str) -> tuple[Optional[Any], Optional[Dict], Optional
     Returns:
         Tuple of (stock data, stock info, error message)
     """
+    api_key = os.getenv('FINNHUB_API_KEY', '')
+    if not api_key:
+        return None, None, "Finnhub API key not set. Please export FINNHUB_API_KEY."
+    
+    client = finnhub.Client(api_key=api_key)
     try:
-        stock = yf.Ticker(ticker)
-        data = stock.history(period="1mo")
+        # Get quote data
+        quote = client.quote(ticker)
+        if not quote or quote.get('c') == 0:
+            return None, None, f"No data found for ticker: {ticker}"
+
+        # Get company profile
+        profile = client.company_profile2(symbol=ticker)
+        if not profile:
+            return None, None, f"No profile found for ticker: {ticker}"
+
+        # Get historical data (last 30 days)
+        from_time = int((datetime.now() - timedelta(days=30)).timestamp())
+        to_time = int(datetime.now().timestamp())
+        historical = client.stock_candles(ticker, 'D', from_time, to_time)
         
-        if data.empty:
-            return None, None, f"No data found for ticker: {ticker}. Please check the ticker symbol and try again."
-        
-        info = stock.info
-        if not info:
-            return None, None, f"Could not retrieve information for ticker: {ticker}. Please check the ticker symbol and try again."
-            
-        return data, info, None
+        if not historical or historical.get('s') != 'ok':
+            return None, None, f"No historical data for ticker: {ticker}"
+
+        # Convert historical data to DataFrame for mpf
+        df = pd.DataFrame({
+            'Date': pd.to_datetime(historical['t'], unit='s'),
+            'Open': historical['o'],
+            'High': historical['h'],
+            'Low': historical['l'],
+            'Close': historical['c'],
+            'Volume': historical['v']
+        }).set_index('Date')
+
+        # Combine info into a format similar to yfinance
+        info = {
+            'currentPrice': quote['c'],
+            'previousClose': quote['pc'],
+            'marketCap': profile.get('marketCapitalization'),
+            'longName': profile.get('name', ticker),
+            'logo_url': profile.get('logo'),
+            'website': profile.get('weburl'),
+            'longBusinessSummary': profile.get('description', ''),
+            'industry': profile.get('industry'),
+            'sector': profile.get('finnhubIndustry')
+        }
+
+        return df, info, None
     except Exception as e:
         return None, None, f"Error fetching data: {str(e)}"
 
@@ -273,46 +309,33 @@ def display_financial_metrics(info: Dict, ticker: str) -> None:
 
 
 def display_news_articles(company_name: str, ticker: str) -> None:
-    """Display news articles related to the company.
+    """Display news articles using Finnhub.
     
     Args:
         company_name: Full name of the company
         ticker: Stock ticker symbol
     """
+    api_key = os.getenv('FINNHUB_API_KEY', '')
+    if not api_key:
+        st.error("Finnhub API key not set. Please export FINNHUB_API_KEY.")
+        return
+
+    client = finnhub.Client(api_key=api_key)
     try:
-        newsapi = NewsApiClient(api_key=os.environ.get('NEWS_API_KEY'))
-        
-        # Try with financial terms first
-        news_data = newsapi.get_everything(
-            q=f"({company_name} OR {ticker}) AND (stock OR shares OR earnings OR financial OR market OR investor)",
-            language="en",
-            sort_by="publishedAt",
-            page_size=5
-        )
-        
-        news_articles = news_data.get("articles", [])
-        
-        # If no results, try without financial terms
-        if not news_articles:
-            news_data = newsapi.get_everything(
-                q=f"{company_name} OR {ticker}",
-                language="en",
-                sort_by="publishedAt",
-                page_size=5
-            )
-            news_articles = news_data.get("articles", [])
-        
-        for article in news_articles:
+        from_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        to_date = datetime.now().strftime('%Y-%m-%d')
+        news = client.company_news(ticker, _from=from_date, to=to_date)[:5]
+
+        for article in news:
             st.markdown(f"""
                 <div class="news-block">
-                    <img src="{article.get('urlToImage', '')}" class="news-image" onerror="this.style.display='none'">
+                    <img src="{article.get('image', '')}" class="news-image" onerror="this.style.display='none'">
                     <div class="news-content">
-                        <h3><a href="{article['url']}" target="_blank">{article['title']}</a></h3>
-                        <p>{article['description']}</p>
+                        <h3><a href="{article.get('url', '#')}" target="_blank">{article.get('headline', '')}</a></h3>
+                        <p>{article.get('summary', '')}</p>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
-            
     except Exception as e:
         st.error(f"Error fetching news: {str(e)}")
 
